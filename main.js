@@ -165,30 +165,30 @@ async function init() {
     world.addChunk(new Chunk("stone"), 0, 0, 0)
     world.addChunk(new Chunk("stone"), 0, 0, 1)
     world.addChunk(new Chunk("stone"), 0, 0, 2)
-    world.addChunk(new Chunk("stone"), 0, 1, 0)
-    world.addChunk(new Chunk("stone"), 0, 1, 1)
-    world.addChunk(new Chunk("stone"), 0, 1, 2)
-    world.addChunk(new Chunk("stone"), 0, 2, 0)
-    world.addChunk(new Chunk("stone"), 0, 2, 1)
-    world.addChunk(new Chunk("stone"), 0, 2, 2)
     world.addChunk(new Chunk("stone"), 1, 0, 0)
     world.addChunk(new Chunk("stone"), 1, 0, 1)
     world.addChunk(new Chunk("stone"), 1, 0, 2)
-    world.addChunk(new Chunk("stone"), 1, 1, 0)
-    world.addChunk(new Chunk("stone"), 1, 1, 1)
-    world.addChunk(new Chunk("stone"), 1, 1, 2)
-    world.addChunk(new Chunk("stone"), 1, 2, 0)
-    world.addChunk(new Chunk("stone"), 1, 2, 1)
-    world.addChunk(new Chunk("stone"), 1, 2, 2)
     world.addChunk(new Chunk("stone"), 2, 0, 0)
     world.addChunk(new Chunk("stone"), 2, 0, 1)
     world.addChunk(new Chunk("stone"), 2, 0, 2)
-    world.addChunk(new Chunk("stone"), 2, 1, 0)
-    world.addChunk(new Chunk("stone"), 2, 1, 1)
-    world.addChunk(new Chunk("stone"), 2, 1, 2)
-    world.addChunk(new Chunk("stone"), 2, 2, 0)
-    world.addChunk(new Chunk("stone"), 2, 2, 1)
-    world.addChunk(new Chunk("stone"), 2, 2, 2)
+    world.addChunk(new Chunk("air"), 0, 1, 0)
+    world.addChunk(new Chunk("air"), 0, 1, 1)
+    world.addChunk(new Chunk("air"), 0, 1, 2)
+    world.addChunk(new Chunk("air"), 1, 1, 0)
+    world.addChunk(new Chunk("air"), 1, 1, 1)
+    world.addChunk(new Chunk("air"), 1, 1, 2)
+    world.addChunk(new Chunk("air"), 2, 1, 0)
+    world.addChunk(new Chunk("air"), 2, 1, 1)
+    world.addChunk(new Chunk("air"), 2, 1, 2)
+    world.addChunk(new Chunk("air"), 0, 2, 0)
+    world.addChunk(new Chunk("air"), 0, 2, 1)
+    world.addChunk(new Chunk("air"), 0, 2, 2)
+    world.addChunk(new Chunk("air"), 1, 2, 0)
+    world.addChunk(new Chunk("air"), 1, 2, 1)
+    world.addChunk(new Chunk("air"), 1, 2, 2)
+    world.addChunk(new Chunk("air"), 2, 2, 0)
+    world.addChunk(new Chunk("air"), 2, 2, 1)
+    world.addChunk(new Chunk("air"), 2, 2, 2)
 
     // world.setBlock(new Block("stone"), 1, 0, 3)
 
@@ -226,14 +226,13 @@ const filterStrength = 20
 let testX
 let testY
 let testZ
+let totalTris = 0
 
 function framerate(time) {
     frame_display.innerHTML = `
 ${(1000/time).toFixed(0)}fps | ${time.toFixed(0)}ms<br>
 Yaw: ${yaw.toFixed(0)}&deg; | Pitch: ${pitch.toFixed(0)}&deg;<br>
-TX: ${testX}<br>
-TY: ${testY}<br>
-TZ: ${testZ}`
+Triangles: ${totalTris}`
 }
 
 let requestId
@@ -252,6 +251,15 @@ async function main() {
         requestId = requestAnimationFrame(f);
     };
     f(performance.now());
+
+    setInterval(blockRandomizer, 1000)
+}
+
+function blockRandomizer() {
+    let ox = Math.floor(Math.random() * chunkSize) + chunkSize
+    let oy = Math.floor(Math.random() * chunkSize) + chunkSize
+    let oz = Math.floor(Math.random() * chunkSize) + chunkSize
+    world.setBlock(new Block(Math.random() > 0.5 ? "stone" : "air"), ox, oy, oz)
 }
 
 let pitch = -45
@@ -680,7 +688,7 @@ class Chunk {
         }
         triangles = triangles.flat()
 
-        console.log(triangles)
+        // console.log(triangles)
 
         let vertices = []
 
@@ -819,8 +827,13 @@ class World {
         this.meshUpToDate = false
     }
 
-    updateIfNeeded() {
+    updateQueued = false
+
+    async updateIfNeeded() {
+        if (this.updateQueued) return
+        this.updateQueued = true
         if (!this.meshUpToDate) this.update()
+        this.updateQueued = false
     }
 
     shouldMesh = true
@@ -928,6 +941,7 @@ class World {
 
     render() {
         this.updateIfNeeded()
+        totalTris = 0
         let arrayList = Object.entries(this.arrayBuffers)
         let elementArrayList = Object.entries(this.elementArrayBuffers)
         for (let i = 0; i < arrayList.length; i++) {
@@ -938,48 +952,8 @@ class World {
             gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 4 * 8, 5 * 4)
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementArrayBuffers[id].buffer)
             gl.drawElements(gl.TRIANGLES, this.elementArrayBuffers[id].amount * 3, gl.UNSIGNED_INT, 0)
+            totalTris += this.elementArrayBuffers[id].amount
             // console.log("Draw: ", id)
-
-            let d = this.arrayBuffers[id].data
-
-            for (let j = 0; j < d.length && false;) {
-                let x = this.arrayBuffers[id].data[j++]
-                let y = this.arrayBuffers[id].data[j++]
-                let z = this.arrayBuffers[id].data[j++]
-                let u = this.arrayBuffers[id].data[j++]
-                let v = this.arrayBuffers[id].data[j++]
-                let nx = this.arrayBuffers[id].data[j++]
-                let ny = this.arrayBuffers[id].data[j++]
-                let nz = this.arrayBuffers[id].data[j++]
-
-                let transPerspectiveMatrix = new J3DIMatrix4(invCameraMatrix)
-                transPerspectiveMatrix.multiply(perspectiveMatrix)
-                // transPerspectiveMatrix.transpose()
-                // transPerspectiveMatrix.invert()
-
-                let arr = transPerspectiveMatrix.getAsArray()
-
-                x = arr[0] * x + arr[1] * y + arr[2] * z + arr[3] * 0.5
-                y = arr[4] * x + arr[5] * y + arr[6] * z + arr[7] * 0.5
-                z = arr[8] * x + arr[9] * y + arr[10] * z + arr[11] * 0.5
-                let w = arr[12] * x + arr[13] * y + arr[14] * z + arr[15] * 0.5
-
-                x /= w
-                y /= w
-                z /= w
-
-                let dotX = x * canvas.width
-                let dotY = y * canvas.height
-                let dotZ = z
-
-                if (j === 8) {
-                    testX = x
-                    testY = y
-                    testZ = z
-                }
-
-                debugDot(dotX, dotY, dotZ);
-            }
         }
     }
 }
