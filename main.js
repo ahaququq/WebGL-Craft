@@ -254,11 +254,11 @@ async function main() {
     f(performance.now());
 }
 
-let pitch = 24
-let yaw = 150
-let camX = 0
+let pitch = -45
+let yaw = 135
+let camX = -1
 let camY = 1
-let camZ = 1
+let camZ = -1
 
 function frame() {
     dot.innerHTML = ""
