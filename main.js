@@ -1,3 +1,8 @@
+import {
+    Vec2, Vec3, Vec4,
+    Matrix4, MatrixLike
+} from "/math.js";
+
 let canvas = document.getElementById("main")
 let dot = document.getElementById("dot")
 let frame_display = document.getElementById("framerate")
@@ -232,7 +237,10 @@ function framerate(time) {
     frame_display.innerHTML = `
 ${(1000/time).toFixed(0)}fps | ${time.toFixed(0)}ms<br>
 Yaw: ${yaw.toFixed(0)}&deg; | Pitch: ${pitch.toFixed(0)}&deg;<br>
-Triangles: ${totalTris}`
+Triangles: ${totalTris}<br>
+TX: ${testX}<br>
+TY: ${testY}<br>
+TZ: ${testZ}`
 }
 
 let requestId
@@ -259,7 +267,7 @@ function blockRandomizer() {
     let ox = Math.floor(Math.random() * chunkSize) + chunkSize
     let oy = Math.floor(Math.random() * chunkSize) + chunkSize
     let oz = Math.floor(Math.random() * chunkSize) + chunkSize
-    world.setBlock(new Block(Math.random() > 0.5 ? "stone" : "air"), ox, oy, oz)
+    world.setBlock(new Block(Math.random() > 0.2 ? "stone" : "air"), ox, oy, oz)
 }
 
 let pitch = -45
@@ -301,6 +309,30 @@ function frame() {
     gl.drawElements(gl.TRIANGLES, 3 * 2 * 4, gl.UNSIGNED_BYTE, 0)
 
     world.render()
+
+    test()
+}
+
+function test() {
+    let cam = new Vec3(0, 0, 0)
+    let test = Vec3.zero
+    let object = new Vec3(0, 0, 2)
+
+    let yaw = 0
+    let pitch = 0
+    let roll = 0
+
+    let camMat = MatrixLike.mul(Matrix4.rotationZYX(yaw, pitch, roll), Matrix4.translation(cam))
+
+    let objectCamSpace = MatrixLike.mul(camMat, object.homogeneous)
+
+    test = objectCamSpace
+    testX = test.x
+    testY = test.y
+    testZ = test.z
+
+
+
 }
 
 function fullscreen() {
@@ -456,17 +488,17 @@ class Block {
     static shouldCull = true
 
     triangles(cull, x, y, z) {
-        let p3d = new Pos3D(x, y, z)
+        let vec = new Vec3(x, y, z)
         if (!this.rendered) return []
         let vertices = [
-            new Vertex(p3d.x - 0.5, p3d.y - 0.5, p3d.z - 0.5, 0, 0, 0, 0, 0),
-            new Vertex(p3d.x - 0.5, p3d.y - 0.5, p3d.z + 0.5, 0, 0, 0, 0, 1),
-            new Vertex(p3d.x - 0.5, p3d.y + 0.5, p3d.z - 0.5, 0, 0, 0, 1, 0),
-            new Vertex(p3d.x - 0.5, p3d.y + 0.5, p3d.z + 0.5, 0, 0, 0, 1, 1),
-            new Vertex(p3d.x + 0.5, p3d.y - 0.5, p3d.z - 0.5, 0, 0, 1, 0, 0),
-            new Vertex(p3d.x + 0.5, p3d.y - 0.5, p3d.z + 0.5, 0, 0, 1, 0, 1),
-            new Vertex(p3d.x + 0.5, p3d.y + 0.5, p3d.z - 0.5, 0, 0, 1, 1, 0),
-            new Vertex(p3d.x + 0.5, p3d.y + 0.5, p3d.z + 0.5, 0, 0, 1, 1, 1),
+            new Vertex(vec.x - 0.5, vec.y - 0.5, vec.z - 0.5, 0, 0, 0, 0, 0),
+            new Vertex(vec.x - 0.5, vec.y - 0.5, vec.z + 0.5, 0, 0, 0, 0, 1),
+            new Vertex(vec.x - 0.5, vec.y + 0.5, vec.z - 0.5, 0, 0, 0, 1, 0),
+            new Vertex(vec.x - 0.5, vec.y + 0.5, vec.z + 0.5, 0, 0, 0, 1, 1),
+            new Vertex(vec.x + 0.5, vec.y - 0.5, vec.z - 0.5, 0, 0, 1, 0, 0),
+            new Vertex(vec.x + 0.5, vec.y - 0.5, vec.z + 0.5, 0, 0, 1, 0, 1),
+            new Vertex(vec.x + 0.5, vec.y + 0.5, vec.z - 0.5, 0, 0, 1, 1, 0),
+            new Vertex(vec.x + 0.5, vec.y + 0.5, vec.z + 0.5, 0, 0, 1, 1, 1),
         ]
         let output = []
         if (!cull[0] || !Block.shouldCull) output.push(
@@ -580,28 +612,6 @@ class Triangle {
     }
 }
 
-class Pos3D {
-    x
-    y
-    z
-
-    constructor(x, y, z) {
-        if (x instanceof Pos3D) {
-            this.x = x.x
-            this.y = x.y
-            this.z = x.z
-            return
-        }
-        this.x = x;
-        this.y = y;
-        this.z = z;
-    }
-
-    toString() {
-        return `Pos3D(${this.x}, ${this.y}, ${this.z})`
-    }
-}
-
 const chunkSize = 16
 
 class Chunk {
@@ -623,18 +633,18 @@ class Chunk {
     }
 
     setBlock(block, x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        this.blocks[p3d.x][p3d.y][p3d.z] = block
+        let vec = new Vec3(x, y, z)
+        this.blocks[vec.x][vec.y][vec.z] = block
         return block
     }
 
     getBlock(x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        return this.blocks[p3d.x][p3d.y][p3d.z]
+        let vec = new Vec3(x, y, z)
+        return this.blocks[vec.x][vec.y][vec.z]
     }
 
     genMesh(neighbours, x, y, z) {
-        let p3d = new Pos3D(x, y, z)
+        let vec = new Vec3(x, y, z)
         let triangles = []
         for (let i = 0; i < chunkSize; i++) {
             for (let j = 0; j < chunkSize; j++) {
@@ -682,7 +692,7 @@ class Chunk {
                         if(block === undefined) cull.push(false)
                         else cull.push(block.solid)
                     } else cull.push(false)
-                    triangles.push(this.blocks[i][j][k].triangles(cull, i + p3d.x, j + p3d.y, k + p3d.z))
+                    triangles.push(this.blocks[i][j][k].triangles(cull, i + vec.x, j + vec.y, k + vec.z))
                 }
             }
         }
@@ -738,61 +748,64 @@ class World {
     chunks = {}
 
     addChunk(chunk, x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        this.chunks[p3d] = {pos: p3d, chunk: chunk}
+        let vec = new Vec3(x, y, z)
+        this.chunks[vec] = {pos: vec, chunk: chunk}
         this.markDirty()
     }
 
     getChunk(x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        let entry = this.chunks[p3d.toString()]
+        let vec = new Vec3(x, y, z)
+        let entry = this.chunks[vec.toString()]
         if (entry === undefined) return null
         return entry.chunk
     }
 
     blockPos(x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        return new Pos3D(
-            p3d.x * chunkSize,
-            p3d.y * chunkSize,
-            p3d.z * chunkSize
+        let vec = new Vec3(x, y, z)
+        return new Vec3(
+            vec.x * chunkSize,
+            vec.y * chunkSize,
+            vec.z * chunkSize
         )
     }
 
     offsetBlockPos(x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        let chunk = this.chunkPos(p3d)
+        let vec = new Vec3(x, y, z)
+        let chunk = this.chunkPos(vec)
         let pos = this.blockPos(chunk)
-        return new Pos3D(
-            p3d.x - pos.x,
-            p3d.y - pos.y,
-            p3d.z - pos.z
+        return new Vec3(
+            vec.x - pos.x,
+            vec.y - pos.y,
+            vec.z - pos.z
         )
     }
 
     chunkPos(x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        return new Pos3D(
-            Math.floor(p3d.x / chunkSize),
-            Math.floor(p3d.y / chunkSize),
-            Math.floor(p3d.z / chunkSize)
+        let vec = new Vec3(x, y, z)
+        return new Vec3(
+            Math.floor(vec.x / chunkSize),
+            Math.floor(vec.y / chunkSize),
+            Math.floor(vec.z / chunkSize)
         )
     }
 
     getBlock(x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        let chunk = this.chunkPos(p3d)
-        let pos = this.offsetBlockPos(p3d)
+        let vec = new Vec3(x, y, z)
+        let chunk = this.chunkPos(vec)
+        let pos = this.offsetBlockPos(vec)
         return this.getChunk(chunk).getBlock(pos.x, pos.y, pos.z)
     }
 
     setBlock(block, x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        let chunk = this.chunkPos(p3d)
-        let pos = this.offsetBlockPos(p3d)
-        this.markDirty()
-        let cache = this.meshCache[chunk.toString()]
-        if (cache !== undefined) cache.dirty = true
+        let vec = new Vec3(x, y, z)
+        let chunk = this.chunkPos(vec)
+        let pos = this.offsetBlockPos(vec)
+        // console.log(block.type, this.getBlock(vec).type)
+        if (this.getBlock(vec).solid !== block.solid) {
+            this.markDirty()
+            let cache = this.meshCache[chunk.toString()]
+            if (cache !== undefined) cache.dirty = true
+        }
         return this.getChunk(chunk).setBlock(block, pos.x, pos.y, pos.z)
     }
 
@@ -866,43 +879,43 @@ class World {
     elementArrayBuffers = {}
 
     newBuffers(x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        this.arrayBuffers[p3d] = {buffer: gl.createBuffer(), used: true, pos: p3d}
-        this.elementArrayBuffers[p3d] = {buffer: gl.createBuffer(), used: true, pos: p3d, amount: 0}
+        let vec = new Vec3(x, y, z)
+        this.arrayBuffers[vec] = {buffer: gl.createBuffer(), used: true, pos: vec}
+        this.elementArrayBuffers[vec] = {buffer: gl.createBuffer(), used: true, pos: vec, amount: 0}
         return {
-            array: this.arrayBuffers[p3d.toString()],
-            elementArray: this.elementArrayBuffers[p3d.toString()]
+            array: this.arrayBuffers[vec.toString()],
+            elementArray: this.elementArrayBuffers[vec.toString()]
         }
     }
 
     setBuffersLength(length, x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        this.elementArrayBuffers[p3d.toString()].amount = length
+        let vec = new Vec3(x, y, z)
+        this.elementArrayBuffers[vec.toString()].amount = length
     }
 
     linkDataBuffers(array, elementArray, x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        this.arrayBuffers[p3d.toString()].data = array
-        this.elementArrayBuffers[p3d.toString()].data = elementArray
+        let vec = new Vec3(x, y, z)
+        this.arrayBuffers[vec.toString()].data = array
+        this.elementArrayBuffers[vec.toString()].data = elementArray
     }
 
     setUsedBuffers(used, x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        this.arrayBuffers[p3d.toString()].used = used
-        this.elementArrayBuffers[p3d.toString()].used = used
+        let vec = new Vec3(x, y, z)
+        this.arrayBuffers[vec.toString()].used = used
+        this.elementArrayBuffers[vec.toString()].used = used
     }
 
     getOrCreateBuffers(x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        if (this.arrayBuffers.hasOwnProperty(p3d.toString())) return this.getBuffers(p3d)
-        return this.newBuffers(p3d)
+        let vec = new Vec3(x, y, z)
+        if (this.arrayBuffers.hasOwnProperty(vec.toString())) return this.getBuffers(vec)
+        return this.newBuffers(vec)
     }
 
     getBuffers(x, y, z) {
-        let p3d = new Pos3D(x, y, z)
+        let vec = new Vec3(x, y, z)
         return {
-            array: this.arrayBuffers[p3d.toString()],
-            elementArray: this.elementArrayBuffers[p3d.toString()]
+            array: this.arrayBuffers[vec.toString()],
+            elementArray: this.elementArrayBuffers[vec.toString()]
         }
     }
 
@@ -925,8 +938,8 @@ class World {
     }
 
     deleteBuffers(x, y, z) {
-        let p3d = new Pos3D(x, y, z)
-        let index = p3d.toString();
+        let vec = new Vec3(x, y, z)
+        let index = vec.toString();
         let array = this.arrayBuffers[index].buffer
         let elementArray = this.elementArrayBuffers[index].buffer
         gl.deleteBuffer(array)
@@ -956,6 +969,24 @@ class World {
             // console.log("Draw: ", id)
         }
     }
+}
+
+class Entity {
+    position = new Vec3(0, 0, 0)
+    pitch = 0
+    yaw = 0
+
+    render() {}
+}
+
+class TickingEntity extends Entity {
+    tick() {}
+}
+
+class MovingEntity extends TickingEntity {
+    velocity = new Vec3(0, 0, 0)
+    acceleration = new Vec3(0, 0, 0)
+
 }
 
 init().then(r => r)
