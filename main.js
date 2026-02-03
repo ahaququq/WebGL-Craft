@@ -1,7 +1,7 @@
 import {
     Vec2, Vec3, Vec4,
     Matrix4, MatrixLike
-} from "/math.js";
+} from "./math.js";
 
 let canvas = document.getElementById("main")
 let dot = document.getElementById("dot")
