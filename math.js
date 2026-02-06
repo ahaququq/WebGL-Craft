@@ -177,6 +177,9 @@ export class Vec2 extends MatrixLike {
     divide(other)   { if (other instanceof Vec2) return new Vec2(this._x / other.x, this._y / other.y); else if (typeof other === "number") return new Vec2(this._x / other, this._y / other); else throw TypeError(`Vec2 or number expected, got ${typeof other}`)}
     exponent(other) { if (other instanceof Vec2) return new Vec2(this._x ** other.x, this._y ** other.y); else if (typeof other === "number") return new Vec2(this._x ** other, this._y ** other); else throw TypeError(`Vec2 or number expected, got ${typeof other}`)}
 
+    static get zero() { return new Vec2(0, 0) }
+    static of(val) { return new Vec2(val, val) }
+
     toString() {
         return `Vec2(${this._x}, ${this._y})`
     }
@@ -470,6 +473,9 @@ export class Vec3 extends Vec2 {
     get homogeneous() {
         return new Vec4(this._x, this._y, this._z, 1.0)
     }
+
+    static get zero() { return new Vec3(0, 0, 0) }
+    static of(val) { return new Vec3(val, val, val) }
 
     plus(other)     { if (other instanceof Vec3) return new Vec3(this._x + other.x, this._y + other.y, this._z + other.z); else if (typeof other === "number") return new Vec3(this._x + other, this._y + other, this._z + other); else throw TypeError(`Vec3 or number expected, got ${typeof other}`)}
     minus(other)    { if (other instanceof Vec3) return new Vec3(this._x - other.x, this._y - other.y, this._z - other.z); else if (typeof other === "number") return new Vec3(this._x - other, this._y - other, this._z - other); else throw TypeError(`Vec3 or number expected, got ${typeof other}`)}

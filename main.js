@@ -213,7 +213,7 @@ let perspectiveMatrix = new J3DIMatrix4()
 
 function perspective() {
     perspectiveMatrix.makeIdentity()
-    perspectiveMatrix.perspective(60, canvas.width / canvas.height, -1, 10)
+    perspectiveMatrix.perspective(90, canvas.width / canvas.height, -1, 10)
 }
 
 function bufferFromArray(data, target) {
@@ -232,6 +232,7 @@ let testX
 let testY
 let testZ
 let totalTris = 0
+let isGrounded
 
 function framerate(time) {
     frame_display.innerHTML = `
@@ -240,7 +241,8 @@ Yaw: ${yaw.toFixed(0)}&deg; | Pitch: ${pitch.toFixed(0)}&deg;<br>
 Triangles: ${totalTris}<br>
 TX: ${testX}<br>
 TY: ${testY}<br>
-TZ: ${testZ}`
+TZ: ${testZ}<br>
+Ground: ${isGrounded}`
 }
 
 let requestId
@@ -272,9 +274,9 @@ function blockRandomizer() {
 
 let pitch = -45
 let yaw = 135
-let camX = -1
-let camY = 1
-let camZ = -1
+let camX = 2
+let camY = 18
+let camZ = 2
 
 function frame() {
     dot.innerHTML = ""
@@ -327,11 +329,13 @@ function test() {
     let objectCamSpace = MatrixLike.mul(camMat, object.homogeneous)
 
     test = objectCamSpace
-    testX = test.x
-    testY = test.y
-    testZ = test.z
+    // testX = test.x
+    // testY = test.y
+    // testZ = test.z
 
-
+    testX = camX.toFixed(1)
+    testY = camY.toFixed(1)
+    testZ = camZ.toFixed(1)
 
 }
 
@@ -440,20 +444,78 @@ function mouseMoveLocked(e) {
     yaw %= 360
 }
 
+let velocity = Vec3.zero
+
+let speed = new Vec3(0.002, 0, 0.002)
+
+let lastGround = 0
+
 function movement() {
     let mx = 0
     let my = 0
     let mz = 0
     mx += keys["d"] === true
     mx -= keys["a"] === true
-    my += keys[" "] === true
-    my -= keys["Shift"] === true
+    my += keys[" "] === true || keys["r"] === true
+    // my -= keys["Shift"] === true || keys["f"] === true
     mz += keys["s"] === true
     mz -= keys["w"] === true
-    const speed = 0.01
-    camX += mx * deltaT * speed * Math.cos(yaw / 180 * Math.PI) + mz * deltaT * speed * -Math.sin(yaw / 180 * Math.PI)
-    camY += my * deltaT * speed
-    camZ += mx * deltaT * speed * Math.sin(yaw / 180 * Math.PI) + mz * deltaT * speed * Math.cos(yaw / 180 * Math.PI)
+
+    let acceleration = new Vec3(mx, my, mz)
+    acceleration = acceleration.times(speed).times(deltaT)
+
+    let rot = Matrix4.rotationY(-yaw)
+
+    let motion = MatrixLike.mul(rot, acceleration.homogeneous).homogeneous
+
+    if (lastGround < 50) {
+        speed.xz = 0.005
+    } else {
+        speed.xz = 0.0005
+    }
+
+    velocity = velocity.plus(motion).times(lastGround < 100 ? 0.75 : 0.97)
+
+    velocity.y -= 0.001 * deltaT
+
+    let groundY1 = camY + velocity.y + 0.5
+    let groundY2 = camY + 0.5
+
+    let ground1 = world.getBlock(Math.round(camX), Math.round(groundY1 - 2), Math.round(camZ))
+    let ground2 = world.getBlock(Math.round(camX), Math.round(groundY2 - 2), Math.round(camZ))
+
+    let ground = false
+
+    if (ground1 === null) ground ||= false
+    else ground ||= ground1.solid
+    if (ground2 === null) ground ||= false
+    else ground ||= ground2.solid
+
+    isGrounded = ground
+
+    if (ground) {
+        lastGround = 0
+        velocity.y = 0
+        groundY1 = Math.round(groundY1) + 0.5
+    } else {
+        lastGround += deltaT
+    }
+
+    if (lastGround < 100) {
+        speed.y = 0.01
+    } else {
+        speed.y = 0
+    }
+
+    camY = groundY1 - 0.5
+
+    camX += velocity.x
+    camZ += velocity.z
+
+
+    // camX += mx * deltaT * speed * Math.cos(yaw / 180 * Math.PI) + mz * deltaT * speed * -Math.sin(yaw / 180 * Math.PI)
+    // camY += my * deltaT * speed
+    // camZ += mx * deltaT * speed * Math.sin(yaw / 180 * Math.PI) + mz * deltaT * speed * Math.cos(yaw / 180 * Math.PI)
 }
 
 let keys = {}
@@ -793,7 +855,9 @@ class World {
         let vec = new Vec3(x, y, z)
         let chunk = this.chunkPos(vec)
         let pos = this.offsetBlockPos(vec)
-        return this.getChunk(chunk).getBlock(pos.x, pos.y, pos.z)
+        let c = this.getChunk(chunk)
+        if (c === null) return null
+        return c.getBlock(pos.x, pos.y, pos.z)
     }
 
     setBlock(block, x, y, z) {
